@@ -31,7 +31,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
 
   frontend:
     build: ./frontend
