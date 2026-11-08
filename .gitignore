@@ -39,3 +39,7 @@ backups/
 .DS_Store
 Thumbs.db
 .idea/
+
+
+#others
+docs.txt

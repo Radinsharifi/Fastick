@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     sms_provider: str = "console"
     sms_api_key: str = ""
     sms_sender: str = ""
+    sms_ir_parent_template_id: str = ""
+    sms_ir_teacher_template_id: str = ""
     platform_admin_phone: str = "09120000000"
     platform_admin_password: str = "ChangeMe-Admin-123!"
     trial_days: int = 7
