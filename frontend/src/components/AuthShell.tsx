@@ -8,7 +8,7 @@ export default function AuthShell({ children }: { children: ReactNode; wide?: bo
         <div className="auth-lockup">
           <BrandMark size={68} />
           <b className="auth-brand-name">FASTICK</b>
-          <p className="auth-slogan">با فستیک، به تیک جلوتر از بقیه باش!</p>
+          <p className="auth-slogan">با فستیک، یه تیک جلوتر از بقیه باش!</p>
           <small>سامانه هوشمند حضور و غیاب مدارس</small>
         </div>
       </aside>
