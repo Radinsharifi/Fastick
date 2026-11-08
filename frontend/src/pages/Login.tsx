@@ -27,7 +27,17 @@ export default function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   }
 
   return (
-    <AuthShell>
+    <AuthShell intro={
+      <>
+        <h1>مدیریت مدرسه، ساده‌تر و منظم‌تر</h1>
+        <p>فستیک به مدرسه کمک می‌کند حضور و غیاب روزانه را ثبت کند، خانواده‌ها و معلمان را در جریان بگذارد و گزارش‌های روشن‌تری از وضعیت کلاس‌ها داشته باشد.</p>
+        <ul>
+          <li>ثبت و پیگیری حضور و غیاب دانش‌آموزان</li>
+          <li>ارسال اعلان و پیامک برای والدین و معلمان</li>
+          <li>مدیریت دانش‌آموزان، کارکنان و گزارش‌های مدرسه</li>
+        </ul>
+      </>
+    }>
       <form className="auth-form" onSubmit={submit} noValidate={false}>
         <div className="auth-mobile-brand"><BrandMark size={40} />FASTICK</div>
         <div><h1>خوش آمدید</h1></div>
