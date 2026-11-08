@@ -63,7 +63,7 @@ export default function Register({ onLogin }: { onLogin: () => Promise<void> }) 
       <form className="auth-form wide" onSubmit={onSubmit}>
         <div className="auth-mobile-brand"><BrandMark size={40} />FASTICK</div>
         <div><h1>راه‌اندازی مدرسه</h1></div>
-        <div className="trial-note"><Gift size={18} aria-hidden /><span>۷ روز تست رایگان؛ بدون نیاز به پرداخت یا کارت بانکی. پس از پایان تست، تمدید اشتراک دستی انجام می‌شود.</span></div>
+        <div className="trial-note"><Gift size={18} aria-hidden /><span>۱۴ روز تست رایگان؛ بدون نیاز به پرداخت یا کارت بانکی. پس از پایان تست، تمدید اشتراک دستی انجام می‌شود.</span></div>
         <div className="reg-steps" role="list" aria-label="مراحل ثبت‌نام">
           {STEPS.map((s, i) => <button type="button" role="listitem" key={s} className={i === step ? 'on' : i < step ? 'ok' : ''} onClick={() => goTo(i)} aria-current={i === step ? 'step' : undefined} disabled={i > step}>{num(i + 1)}. {s}</button>)}
         </div>
