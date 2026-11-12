@@ -167,15 +167,8 @@ def send_parent_sms(start:date,end:date,classroom_id:int=Query(ge=1),user:User=D
             skipped_no_phone+=1
             db.rollback()
             continue
-        if settings.sms_provider.lower() == "smsir":
-            accepted = sms_service.send_smsir_template(
-                student.guardian_phone,
-                settings.sms_ir_parent_template_id,
-                {"NAME": student.full_name},
-            )
-        else:
-            message=f"ولی محترم {student.full_name}، {len(entries)} مورد غیبت/غیبت موجه ایشان از تاریخ {start} تا {end} در مدرسه ثبت شده است."
-            accepted = sms_service.send(student.guardian_phone,message)
+        message=f"ولی محترم {student.full_name}، {len(entries)} مورد غیبت/غیبت موجه ایشان از تاریخ {start} تا {end} در مدرسه ثبت شده است."
+        accepted = sms_service.send(student.guardian_phone,message)
         if accepted:
             for record,_,_ in entries:
                 record.parent_sms_sent=True

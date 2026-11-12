@@ -8,7 +8,6 @@ from ..models import User,UserRole,Notification,TeacherAssignment,Classroom
 from ..schemas import ReminderIn
 from ..services.sms import sms_service
 from ..services.audit import log_action
-from ..config import settings
 
 router=APIRouter(prefix="/notifications",tags=["notifications"])
 
@@ -36,12 +35,5 @@ def reminder(data:ReminderIn,user:User=Depends(require_roles(UserRole.MANAGER,Us
     db.add(Notification(school_id=user.school_id,recipient_id=teacher.id,sender_id=user.id,title="یادآوری حضور و غیاب",message=message,kind="attendance_reminder"))
     sms_sent=False
     if data.send_sms:
-        if settings.sms_provider.lower() == "smsir":
-            sms_sent=sms_service.send_smsir_template(
-                teacher.phone,
-                settings.sms_ir_teacher_template_id,
-                {"NAME": teacher.full_name},
-            )
-        else:
-            sms_sent=sms_service.send(teacher.phone,message)
+        sms_sent=sms_service.send(teacher.phone,message)
     log_action(db,user,"attendance_reminder_sent","user",str(teacher.id),{"sms":sms_sent}); db.commit(); return {"ok":True,"sms_sent":sms_sent}
