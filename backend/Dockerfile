@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim
+FROM registry.docker.ir/library/python:3.12-slim
 ARG APT_MIRROR_HOST=mirror.iranserver.com
 ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 WORKDIR /app
