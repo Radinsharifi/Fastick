@@ -124,10 +124,20 @@ export default function Staff() {
                       <td data-label="موبایل"><span className="ltr num">{u.phone}</span></td>
                       <td data-label="کد پرسنلی"><span className="num">{u.personnel_code || '-'}</span></td>
                       <td data-label="کلاس‌ها">
-                        {u.assignments?.length
-                          ? <div className="tag-list">{u.assignments.map((a, i) => <span className="tag" key={i}><b>{a.class_name}</b>{a.subject}</span>)}</div>
-                          : <span className="muted">—</span>}
-                      </td>
+                          {u.assignments?.length
+                            ? (
+                              <div className="tag-list">
+                                {u.assignments.map((a, i) => (
+                                  <span className="tag" key={i}>
+                                    <b>{a.class_name}</b>
+                                    <small>{a.shift || '—'}</small>
+                                    {a.subject}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                            : <span className="muted">—</span>}
+                        </td>
                       <td data-label="وضعیت"><Badge tone={u.is_active === false ? 'neutral' : 'success'}>{u.is_active === false ? 'غیرفعال' : 'فعال'}</Badge></td>
                       <td data-label="ویرایش"><Button size="sm" icon={Pencil} onClick={() => openEdit(u)}>ویرایش</Button></td>
                     </tr>
@@ -175,13 +185,29 @@ export default function Staff() {
               {classes.length === 0
                 ? <Alert tone="warning">هنوز کلاسی تعریف نشده است. ابتدا از «تنظیمات مدرسه» کلاس اضافه کنید.</Alert>
                 : <div className="chip-select" role="group" aria-label="انتخاب کلاس‌ها">
-                  {classes.map(c => <button type="button" key={c.id} aria-pressed={f.assignments.some(a => a.classroom_id === c.id)} onClick={() => toggleClass(c.id)}><Plus size={14} aria-hidden />{c.name}</button>)}
+                  {classes.map(c => (
+                    <button
+                      type="button"
+                      key={c.id}
+                      aria-pressed={f.assignments.some(a => a.classroom_id === c.id)}
+                      onClick={() => toggleClass(c.id)}
+                    >
+                      <Plus size={14} aria-hidden />
+                      <span>{c.name}</span>
+                      <small className="muted">{c.shift_name || '—'}</small>
+                    </button>
+                  ))}
                 </div>}
               {f.assignments.length > 0 && (
                 <div className="assign-list">
                   {f.assignments.map((a, i) => (
                     <div className="assign-row" key={a.classroom_id}>
-                      <span>{classes.find(c => c.id === a.classroom_id)?.name}</span>
+                      <span className="assign-class-info">
+                        <b>{classes.find(c => c.id === a.classroom_id)?.name}</b>
+                        <small className="muted">
+                          {classes.find(c => c.id === a.classroom_id)?.shift_name || '—'}
+                        </small>
+                      </span>
                       <input className="input" aria-label="نام درس" value={a.subject} placeholder="نام درس" onChange={e => { const arr = [...f.assignments]; arr[i] = { ...a, subject: e.target.value }; setF(v => ({ ...v, assignments: arr })) }} />
                       <button type="button" className="icon-btn" aria-label="حذف این کلاس" onClick={() => toggleClass(a.classroom_id)}><Trash2 size={16} /></button>
                     </div>

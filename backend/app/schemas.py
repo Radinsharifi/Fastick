@@ -74,6 +74,12 @@ class ClassCreate(BaseModel):
     field: str | None = None
     shift_id: int
 
+class ClassUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=80)
+    grade: str | None = Field(default=None, max_length=50)
+    field: str | None = Field(default=None, max_length=80)
+    shift_id: int | None = Field(default=None, ge=1)
+
 class StudentCreate(BaseModel):
     student_code: str = Field(min_length=1, max_length=50)
     full_name: str = Field(min_length=1, max_length=150)

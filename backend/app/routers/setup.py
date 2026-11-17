@@ -7,7 +7,7 @@ from io import BytesIO
 from ..db import get_db
 from ..deps import require_roles
 from ..models import User, UserRole, SchoolShift, ShiftPeriod, Classroom, Student, TeacherAssignment
-from ..schemas import UserCreate, UserUpdate, ClassCreate, StudentCreate, StudentUpdate, ShiftCreate, ShiftUpdate
+from ..schemas import UserCreate, UserUpdate, ClassCreate, ClassUpdate, StudentCreate, StudentUpdate, ShiftCreate, ShiftUpdate
 from ..auth import hash_password
 from ..services.audit import log_action
 
@@ -63,13 +63,41 @@ def create_class(data: ClassCreate, user: User = Depends(admin_dep), db: Session
     row = Classroom(school_id=user.school_id, **data.model_dump())
     db.add(row); log_action(db,user,"class_created","class"); db.commit(); db.refresh(row); return row
 
+@router.patch("/classes/{class_id}")
+def update_class(class_id:int, data:ClassUpdate, user:User=Depends(admin_dep), db:Session=Depends(get_db)):
+    row = db.scalar(select(Classroom).where(Classroom.id == class_id, Classroom.school_id == user.school_id))
+    if not row: raise HTTPException(404,"کلاس پیدا نشد")
+    values = data.model_dump(exclude_unset=True)
+    if "name" in values:
+        values["name"] = (values["name"] or "").strip()
+        if not values["name"]:
+            raise HTTPException(400,"نام کلاس الزامی است")
+    for key in ("grade","field"):
+        if key in values:
+            values[key] = (values[key] or "").strip() or None
+    if values.get("shift_id") is not None:
+        shift = db.scalar(select(SchoolShift).where(SchoolShift.id == values["shift_id"], SchoolShift.school_id == user.school_id))
+        if not shift: raise HTTPException(404,"شیفت پیدا نشد")
+    next_name = values.get("name", row.name)
+    next_shift_id = values.get("shift_id", row.shift_id)
+    duplicate = db.scalar(select(Classroom.id).where(Classroom.school_id == user.school_id, Classroom.shift_id == next_shift_id, Classroom.name == next_name, Classroom.id != row.id))
+    if duplicate:
+        raise HTTPException(409,"کلاسی با این نام در این شیفت وجود دارد")
+    for key,value in values.items(): setattr(row,key,value)
+    log_action(db,user,"class_updated","class",str(row.id)); db.commit(); return {"ok":True}
+
 @router.get("/users")
 def list_users(user: User = Depends(admin_dep), db: Session = Depends(get_db)):
     users = db.scalars(select(User).where(User.school_id == user.school_id).order_by(User.role, User.full_name)).all()
     out=[]
     for u in users:
-        ass = db.execute(select(TeacherAssignment, Classroom).join(Classroom).where(TeacherAssignment.teacher_id == u.id)).all()
-        out.append({"id":u.id,"full_name":u.full_name,"phone":u.phone,"personnel_code":u.personnel_code,"role":u.role.value,"is_active":u.is_active,"assignments":[{"id":a.id,"classroom_id":c.id,"class_name":c.name,"subject":a.subject} for a,c in ass]})
+        ass = db.execute(
+            select(TeacherAssignment, Classroom, SchoolShift)
+            .join(Classroom, TeacherAssignment.classroom_id == Classroom.id)
+            .join(SchoolShift, Classroom.shift_id == SchoolShift.id)
+            .where(TeacherAssignment.teacher_id == u.id)
+        ).all()
+        out.append({"id":u.id,"full_name":u.full_name,"phone":u.phone,"personnel_code":u.personnel_code,"role":u.role.value,"is_active":u.is_active,"assignments":[{"id":a.id,"classroom_id":c.id,"class_name":c.name,"subject":a.subject,"shift":s.name,"periods_count":s.periods_count} for a,c,s in ass]})
     return out
 
 @router.post("/users")

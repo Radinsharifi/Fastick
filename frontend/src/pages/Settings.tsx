@@ -8,6 +8,7 @@ import { faDigits, num } from '../lib/format'
 
 type PeriodDraft = { starts_at: string; ends_at: string }
 type ShiftForm = { id?: number; name: string; periods: PeriodDraft[] }
+type ClassForm = { name: string; grade: string; field: string; shift_id: string }
 
 const blankPeriods = (count: number): PeriodDraft[] => Array.from({ length: count }, () => ({ starts_at: '', ends_at: '' }))
 const inputTime = (time?: string | null) => time?.slice(0, 5) || ''
@@ -21,8 +22,14 @@ export default function Settings() {
   const [busyClass, setBusyClass] = useState(false)
   const [dlg, setDlg] = useState(false)
   const [shiftForm, setShiftForm] = useState<ShiftForm>({ name: 'عصر', periods: blankPeriods(4) })
+  const [countText, setCountText] = useState('4')
   const [shiftErr, setShiftErr] = useState('')
   const [busyShift, setBusyShift] = useState(false)
+  const [classDlg, setClassDlg] = useState(false)
+  const [editClass, setEditClass] = useState<ClassRoom | null>(null)
+  const [classForm, setClassForm] = useState<ClassForm>({ name: '', grade: '', field: '', shift_id: '' })
+  const [classErr, setClassErr] = useState('')
+  const [busyEditClass, setBusyEditClass] = useState(false)
 
   async function load() {
     try {
@@ -42,8 +49,37 @@ export default function Settings() {
     } catch (e) { setErr(getError(e)) } finally { setBusyClass(false) }
   }
 
+  function openEditClass(row: ClassRoom) {
+    setEditClass(row)
+    setClassForm({
+      name: row.name,
+      grade: row.grade || '',
+      field: row.field || '',
+      shift_id: String(row.shift_id || shifts?.[0]?.id || ''),
+    })
+    setClassErr('')
+    setClassDlg(true)
+  }
+
+  async function saveClass(e: FormEvent) {
+    e.preventDefault(); setClassErr(''); setBusyEditClass(true)
+    const payload = {
+      name: classForm.name.trim(),
+      grade: classForm.grade.trim() || null,
+      field: classForm.field.trim() || null,
+      shift_id: Number(classForm.shift_id),
+    }
+    try {
+      if (editClass) await api.patch(`/setup/classes/${editClass.id}`, payload)
+      setClassDlg(false)
+      toast('success', `کلاس «${payload.name}» به‌روزرسانی شد.`)
+      await load()
+    } catch (e) { setClassErr(getError(e)) } finally { setBusyEditClass(false) }
+  }
+
   function openNewShift() {
     setShiftForm({ name: 'عصر', periods: blankPeriods(4) })
+    setCountText('4')
     setShiftErr('')
     setDlg(true)
   }
@@ -57,14 +93,48 @@ export default function Settings() {
         ends_at: inputTime(shift.periods?.[i]?.ends_at),
       })),
     })
+    setCountText(String(shift.periods_count))
     setShiftErr('')
     setDlg(true)
   }
 
+  // تعداد زنگ را فقط زمانی اعمال می‌کنیم که مقدار وارد شده معتبر باشد؛
+  // این‌گونه می‌توان مقدار قبلی را پاک کرد و عدد جدید را تایپ کرد.
+  function commitPeriodCount(): number {
+    const count = Number(countText)
+    if (!Number.isInteger(count) || count < 1 || count > 12) {
+      setCountText(String(shiftForm.periods.length))
+      return shiftForm.periods.length
+    }
+    if (count !== shiftForm.periods.length) resizePeriods(count)
+    setCountText(String(count))
+    return count
+  }
+
+  function stepPeriodCount(delta: number) {
+    const current = Number(countText)
+    const base = Number.isInteger(current) && current >= 1 && current <= 12 ? current : shiftForm.periods.length
+    const next = Math.min(12, Math.max(1, base + delta))
+    setCountText(String(next))
+    if (next !== shiftForm.periods.length) resizePeriods(next)
+  }
+
   async function saveShift(e: FormEvent) {
     e.preventDefault(); setShiftErr('')
-    const periods = shiftForm.periods.map(p => ({ starts_at: p.starts_at, ends_at: p.ends_at }))
+    const count = Number(countText)
+    if (!Number.isInteger(count) || count < 1 || count > 12) {
+      setShiftErr('تعداد زنگ باید بین ۱ تا ۱۲ باشد.')
+      return
+    }
+    const periods = Array.from({ length: count }, (_, i) => ({
+      starts_at: shiftForm.periods[i]?.starts_at || '',
+      ends_at: shiftForm.periods[i]?.ends_at || '',
+    }))
     for (let i = 0; i < periods.length; i++) {
+      if (!periods[i].starts_at || !periods[i].ends_at) {
+        setShiftErr(`برای زنگ ${num(i + 1)} زمان شروع و پایان را وارد کنید.`)
+        return
+      }
       if (periods[i].starts_at >= periods[i].ends_at) {
         setShiftErr(`زمان پایان زنگ ${num(i + 1)} باید بعد از زمان شروع آن باشد.`)
         return
@@ -142,18 +212,19 @@ export default function Settings() {
 
         <Card className="card-flush span2">
           <SectionHeader icon={Layers} title="کلاس‌های تعریف‌شده" description={classes ? `${num(classes.length)} کلاس` : undefined} />
-          {classes === null ? <TableSkeleton rows={4} cols={5} />
+          {classes === null ? <TableSkeleton rows={4} cols={6} />
             : classes.length === 0 ? <EmptyState icon={Layers} title="هنوز کلاسی تعریف نشده" text="از فرم بالا اولین کلاس را اضافه کنید." />
             : (
               <div className="table-wrap">
                 <table className="table table-stack">
-                  <thead><tr><th>کلاس</th><th>پایه</th><th>رشته</th><th>شیفت</th><th>زنگ</th></tr></thead>
+                  <thead><tr><th>کلاس</th><th>پایه</th><th>رشته</th><th>شیفت</th><th>زنگ</th><th>ویرایش</th></tr></thead>
                   <tbody>{classes.map(c => (
                     <tr key={c.id}>
                       <td className="cell-first"><span className="cell-primary">{c.name}</span></td>
                       <td data-label="پایه">{c.grade || '-'}</td><td data-label="رشته">{c.field || '-'}</td>
                       <td data-label="شیفت"><Badge tone="neutral">{c.shift_name}</Badge></td>
                       <td data-label="زنگ" className="num">{num(c.periods_count)}</td>
+                      <td data-label="ویرایش"><Button size="sm" icon={Pencil} onClick={() => openEditClass(c)}>ویرایش</Button></td>
                     </tr>))}</tbody>
                 </table>
               </div>
@@ -168,8 +239,15 @@ export default function Settings() {
           {shiftErr && <Alert tone="error">{shiftErr}</Alert>}
           <Field label="نام شیفت"><input required value={shiftForm.name} onChange={e => setShiftForm({ ...shiftForm, name: e.target.value })} /></Field>
           <Field label="تعداد زنگ" hint="بین ۱ تا ۱۲">
-            <input type="number" min={1} max={12} inputMode="numeric" required value={shiftForm.periods.length}
-              onChange={e => { const count = Number(e.target.value); if (Number.isInteger(count) && count >= 1 && count <= 12) resizePeriods(count) }} />
+            <div className="count-stepper">
+              <button type="button" className="icon-btn" onClick={() => stepPeriodCount(-1)} disabled={shiftForm.periods.length <= 1} aria-label="کاهش تعداد زنگ">−</button>
+              <input type="text" inputMode="numeric" autoComplete="off" maxLength={2} value={countText}
+                onFocus={e => e.currentTarget.select()}
+                onChange={e => setCountText(e.target.value.replace(/[^0-9]/g, ''))}
+                onBlur={commitPeriodCount}
+                aria-label="تعداد زنگ" />
+              <button type="button" className="icon-btn" onClick={() => stepPeriodCount(1)} disabled={shiftForm.periods.length >= 12} aria-label="افزایش تعداد زنگ">+</button>
+            </div>
           </Field>
           <div className="period-grid">
             {shiftForm.periods.map((period, i) => (
@@ -179,6 +257,24 @@ export default function Settings() {
                 <Field label="پایان"><input type="time" dir="ltr" required value={period.ends_at} onChange={e => setShiftForm(f => ({ ...f, periods: f.periods.map((p, index) => index === i ? { ...p, ends_at: e.target.value } : p) }))} /></Field>
               </div>
             ))}
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog open={classDlg} onClose={() => setClassDlg(false)} title={editClass ? `ویرایش کلاس «${editClass.name}»` : 'ویرایش کلاس'}
+        description="نام، پایه، رشته و شیفت کلاس را تغییر دهید. با تغییر شیفت، تعداد زنگ‌های کلاس هم عوض می‌شود."
+        footer={<><Button variant="ghost" onClick={() => setClassDlg(false)}>انصراف</Button><Button variant="primary" type="submit" form="class-form" loading={busyEditClass}>ذخیره کلاس</Button></>}>
+        <form id="class-form" className="stack" onSubmit={saveClass}>
+          {classErr && <Alert tone="error">{classErr}</Alert>}
+          <div className="form-grid">
+            <Field label="نام کلاس"><input required maxLength={80} value={classForm.name} onChange={e => setClassForm({ ...classForm, name: e.target.value })} placeholder="مثلاً 7/1" /></Field>
+            <Field label="شیفت">
+              <select value={classForm.shift_id} onChange={e => setClassForm({ ...classForm, shift_id: e.target.value })}>
+                {(shifts || []).map(s => <option value={s.id} key={s.id}>{s.name}</option>)}
+              </select>
+            </Field>
+            <Field label="پایه"><input maxLength={50} value={classForm.grade} onChange={e => setClassForm({ ...classForm, grade: e.target.value })} /></Field>
+            <Field label="رشته"><input maxLength={80} value={classForm.field} onChange={e => setClassForm({ ...classForm, field: e.target.value })} /></Field>
           </div>
         </form>
       </Dialog>
